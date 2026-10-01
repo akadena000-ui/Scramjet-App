@@ -1,66 +1,826 @@
-<!doctype html>
-<html>
-	<head>
-		<meta charset="utf-8" />
-		<meta
-			name="viewport"
-			content="width=device-width, initial-scale=1.0, shrink-to-fit=no"
-		/>
-		<title>Scramjet</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>about:blank</title>
+<!--
+  ============================================================
+  SCRAMJET PROXY ENGINE ONLY (copied from Scramjet-App)
+  NOT their UI — your ALEKS desktop is the UI.
 
-		<link rel="shortcut icon" content="favicon.webp" />
-	
-		<script src="/scram/scramjet.all.js"></script>
-		<script src="/baremux/index.js"></script>
-		
-		<link rel="stylesheet" href="index.css" />
-		<script src="register-sw.js" defer></script>
-		<script src="search.js" defer></script>
-		<script src="index.js" defer></script>
-	</head>
+  HOW TO RUN (required — will not work as a lone file:// page):
 
-	<body>
-		<div title="Scramjet Logo" class="flex-center logo-wrapper header-center">
-			<img class="logo" src="sj.png" alt="Scramjet" />
-			<h1>Scramjet | MW</h1>
-		</div>
-		<div class="flex-center desc left-margin">
-			<p>
-				Scramjet is an experimental interception based web proxy designed to
-				evade internet censorship, bypass arbitrary web browser restrictions and
-				innovate web proxy technologies.
-			</p>
-		</div>
+  1. git clone https://github.com/MercuryWorkshop/Scramjet-App
+  2. cd Scramjet-App && pnpm install
+  3. Copy this file over public/index.html (or rename to index.html)
+  4. Copy sw.js into public/sw.js (already matches Scramjet-App)
+  5. Keep public/scram/ and public/baremux/ from Scramjet-App
+  6. pnpm start
 
-		<form id="sj-form" class="flex-center">
-			<input
-				id="sj-search-engine"
-				value="https://www.google.com/search?q=%s"
-				type="hidden"
-			/>
-			<input id="sj-address" type="text" placeholder="Search the web freely" />
-		</form>
-		<div class="desc left-margin">
-			<p id="sj-error"></p>
-			<pre id="sj-error-code"></pre>
-		</div>
-		<footer>
-			<div>
-				<a
-					title="The Mercury Workshop GitHub organization"
-					href="https://github.com/MercuryWorkshop"
-					>Mercury Workshop</a
-				>
-				<a
-					title="The example demo app for Scramjet"
-					href="https://github.com/MercuryWorkshop/Scramjet-Demo"
-					>GitHub</a
-				>
-				<a title="License information" href="credits.html">Credits</a>
-			</div>
-			<div>
-				<span>Scramjet &copy; MW 2025</span>
-			</div>
-		</footer>
-	</body>
+  Their engine code (exact):
+    $scramjetLoadController() → ScramjetController
+    scramjet.init()
+    BareMux.BareMuxConnection + setTransport(libcurl + wisp)
+    scramjet.createFrame(iframe).go(REAL_URL)
+  ============================================================
+-->
+<script src="/scram/scramjet.all.js"></script>
+<script src="/baremux/index.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b1220;--surface:rgba(15,23,42,.94);--s2:#0f172a;--s3:#1e293b;--line:rgba(148,163,184,.12);--line2:rgba(148,163,184,.2);--txt:#f1f5f9;--muted:#94a3b8;--dim:#64748b;--a:#38bdf8;--a2:#818cf8;--ok:#4ade80;--r:16px;--font:"Segoe UI",system-ui,sans-serif;--sh:0 25px 80px rgba(0,0,0,.55);--ease:cubic-bezier(.22,1,.36,1)}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--txt);overflow:hidden;user-select:none}
+button,input,textarea{font-family:inherit}
+#cloak{position:fixed;inset:0;z-index:2147483646;background:#fff;display:none;align-items:center;justify-content:center;flex-direction:column}
+#cloak.on{display:flex}
+#cloak .h{font-size:11px;color:#ccc;opacity:0;margin-top:12px}#cloak:hover .h{opacity:.5}
+#boot{position:fixed;inset:0;z-index:999999;background:#020617;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .7s,visibility .7s}
+#boot.gone{opacity:0;visibility:hidden;pointer-events:none}
+#boot .logo{width:88px;height:88px;border-radius:22px;background:linear-gradient(145deg,#38bdf8,#818cf8);display:flex;align-items:center;justify-content:center;margin-bottom:28px;box-shadow:0 12px 40px rgba(56,189,248,.35)}
+#boot .logo img{width:48px;height:48px;filter:brightness(0) invert(1)}
+#boot .title{font-size:28px;font-weight:800;letter-spacing:10px;margin-bottom:8px;background:linear-gradient(90deg,#7dd3fc,#a5b4fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+#boot .sub{font-size:11px;color:var(--muted);letter-spacing:4px;text-transform:uppercase;margin-bottom:36px}
+#boot .bar{width:200px;height:3px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}
+#boot .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#818cf8);animation:fill 1.4s .3s forwards}
+@keyframes fill{to{width:100%}}
+#desktop{position:relative;width:100vw;height:100vh;overflow:hidden;background:radial-gradient(ellipse 90% 70% at 10% 0%,rgba(56,189,248,.14),transparent 50%),radial-gradient(ellipse 70% 60% at 90% 100%,rgba(129,140,248,.12),transparent 45%),#0b1220}
+#icons{position:absolute;top:20px;left:20px;display:grid;grid-template-columns:100px;gap:10px;z-index:2}
+.icon{width:96px;padding:14px 8px 12px;border-radius:14px;text-align:center;cursor:pointer;font-size:11px;font-weight:500;border:1px solid transparent;transition:.18s;text-shadow:0 1px 4px #000}
+.icon:hover{background:rgba(56,189,248,.12);border-color:rgba(56,189,248,.3);transform:translateY(-3px)}
+.icon .ic{width:54px;height:54px;margin:0 auto 10px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.1);box-shadow:0 10px 28px rgba(0,0,0,.35)}
+.icon .ic img{width:28px;height:28px;filter:invert(.92)}
+.icon .label{display:block;line-height:1.3}
+.win{position:absolute;background:var(--surface);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);border:1px solid var(--line2);border-radius:var(--r);box-shadow:var(--sh);display:flex;flex-direction:column;overflow:hidden;min-width:360px;min-height:240px;animation:winIn .28s var(--ease)}
+@keyframes winIn{from{opacity:0;transform:scale(.9) translateY(16px)}to{opacity:1;transform:none}}
+.win.minimized{display:none!important}
+.win.maximized{border-radius:0!important;top:0!important;left:0!important;width:100vw!important;height:calc(100vh - 60px)!important}
+.win.active{border-color:rgba(56,189,248,.4)}
+.win-title{height:46px;padding:0 10px 0 16px;display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,rgba(30,41,59,.98),rgba(15,23,42,.95));border-bottom:1px solid var(--line);cursor:grab;flex-shrink:0}
+.win-title .w-ic{width:24px;height:24px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06)}
+.win-title .w-ic img{width:16px;height:16px;filter:invert(.9)}
+.win-title .w-name{flex:1;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.win-btn{width:36px;height:30px;background:0;border:0;color:#94a3b8;font-size:14px;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.win-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+.win-btn.close:hover{background:#ef4444;color:#fff}
+.win-body{flex:1;overflow:hidden;position:relative;background:rgba(2,6,23,.96);display:flex;flex-direction:column;min-height:0}
+.win-resize{position:absolute;width:18px;height:18px;right:0;bottom:0;cursor:nwse-resize;z-index:8}
+.proxy-bar{font-size:10px;padding:7px 14px;background:rgba(0,0,0,.35);border-bottom:1px solid var(--line);color:var(--muted);flex-shrink:0;display:flex;align-items:center;gap:8px}
+.proxy-bar.on{color:var(--ok)}
+.proxy-bar .dot{width:7px;height:7px;border-radius:50%;background:#fbbf24}
+.proxy-bar.on .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.hub{padding:20px;overflow:auto;flex:1;min-height:0}
+.hub-search{width:100%;padding:13px 18px;background:var(--s2);border:1px solid var(--line);border-radius:12px;color:var(--txt);font-size:13px;outline:0;margin-bottom:20px}
+.hub-search:focus{border-color:var(--a)}
+.cat{margin-bottom:28px}
+.cat h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;color:var(--muted)}
+.games{display:grid;grid-template-columns:repeat(auto-fill,minmax(156px,1fr));gap:14px}
+.game{background:var(--s2);border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;transition:.2s}
+.game:hover{transform:translateY(-5px);border-color:rgba(56,189,248,.45)}
+.game .thumb{height:96px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#1e293b,#0f172a)}
+.game .thumb img{width:42px;height:42px;filter:invert(.9)}
+.game .info{padding:12px 14px}
+.game .name{font-size:12px;font-weight:700}
+.game .desc{font-size:10px;color:var(--dim);margin-top:3px}
+.nav-shell{display:flex;flex-direction:column;height:100%;flex:1;min-height:0;background:#020617}
+.nav-chrome{background:linear-gradient(180deg,#1e293b,#0f172a);border-bottom:1px solid var(--line);padding:8px 12px 10px;flex-shrink:0}
+.nav-row{display:flex;gap:6px;align-items:center}
+.nav-url{flex:1;display:flex;align-items:center;height:36px;background:#020617;border:1px solid var(--line);border-radius:12px;padding:0 6px 0 14px}
+.nav-url:focus-within{border-color:var(--a)}
+.nav-url input{flex:1;background:0;border:0;color:var(--txt);font-size:12px;outline:0;height:100%}
+.nav-url .go{height:28px;padding:0 16px;border:0;border-radius:8px;background:linear-gradient(135deg,var(--a),var(--a2));color:#0f172a;font-size:11px;font-weight:700;cursor:pointer}
+.frame-host{flex:1;min-height:0;position:relative;background:#020617}
+.frame-host iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#020617}
+.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#020617;color:var(--muted);font-size:13px;z-index:2}
+.panel{padding:24px;font-size:13px;line-height:1.65;overflow:auto;flex:1}
+.card{padding:16px;background:var(--s2);border:1px solid var(--line);border-radius:14px;margin-bottom:12px}
+.card b{display:block;margin-bottom:4px}
+.card span{font-size:11px;color:var(--muted);line-height:1.6}
+.note{display:flex;flex-direction:column;height:100%}
+.note textarea{flex:1;padding:18px;background:0;border:0;color:var(--txt);font-family:Consolas,monospace;font-size:13px;outline:0;resize:none}
+.note-bar{padding:9px 14px;background:var(--s2);border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.calc{display:flex;flex-direction:column;height:100%;padding:16px;gap:12px}
+.calc-display{background:var(--s2);border:1px solid var(--line);border-radius:14px;padding:24px 18px;text-align:right;font-size:30px;font-weight:700;font-family:Consolas,monospace;min-height:80px}
+.calc-grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.calc-btn{background:var(--s3);border:1px solid var(--line);border-radius:12px;color:var(--txt);font-size:17px;font-weight:600;cursor:pointer}
+.calc-btn.eq{background:linear-gradient(135deg,var(--a),var(--a2));border:0;color:#0f172a}
+.calc-btn.clr{background:#3f1d1d;color:#fca5a5}
+#taskbar{position:fixed;bottom:0;left:0;right:0;height:60px;background:rgba(2,6,23,.94);backdrop-filter:blur(32px);border-top:1px solid var(--line);display:flex;align-items:center;padding:0 12px;gap:8px;z-index:99999}
+#start{width:46px;height:42px;border-radius:13px;border:0;background:linear-gradient(145deg,var(--a),var(--a2));cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(56,189,248,.35)}
+#start img{width:20px;height:20px;filter:brightness(0) invert(1)}
+#tasks{flex:1;display:flex;gap:6px;overflow-x:auto}
+.task{padding:9px 16px;background:var(--s3);border:1px solid transparent;border-radius:12px;color:#cbd5e1;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;max-width:180px;overflow:hidden;white-space:nowrap}
+.task img{width:15px;height:15px;filter:invert(.9)}
+.task.active{border-color:rgba(56,189,248,.5);color:#fff}
+#clock{font-size:12px;font-weight:600;padding:0 14px;text-align:center;line-height:1.35}
+#clock .d{font-size:10px;color:var(--muted)}
+#tray{display:flex;gap:12px;padding:0 14px;border-left:1px solid var(--line);border-right:1px solid var(--line);align-items:center}
+#tray img{width:16px;height:16px;opacity:.7;cursor:pointer;filter:invert(.8)}
+#hideBtn{width:36px;height:32px;border-radius:10px;border:1px solid var(--line);background:var(--s3);color:var(--muted);font-size:11px;cursor:pointer;font-weight:700}
+#startmenu{position:fixed;bottom:72px;left:12px;width:400px;max-height:74vh;padding:18px;background:rgba(15,23,42,.97);backdrop-filter:blur(40px);border:1px solid var(--line2);border-radius:20px;box-shadow:0 40px 100px rgba(0,0,0,.8);z-index:99998;display:none;animation:winIn .2s var(--ease);overflow-y:auto}
+#startmenu.on{display:block}
+#startmenu h4{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px}
+.sm-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sm-item{padding:14px 6px;border-radius:14px;text-align:center;cursor:pointer;font-size:10px;color:#cbd5e1}
+.sm-item:hover{background:rgba(56,189,248,.14);color:#fff}
+.sm-item .ic{width:40px;height:40px;margin:0 auto 8px;border-radius:12px;background:var(--s3);display:flex;align-items:center;justify-content:center;border:1px solid var(--line)}
+.sm-item .ic img{width:20px;height:20px;filter:invert(.9)}
+.sm-footer{padding:14px;background:rgba(0,0,0,.25);border-radius:14px;margin-top:14px;display:flex;align-items:center;gap:12px;font-size:11px;color:var(--muted);border:1px solid var(--line)}
+.sm-footer .avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--a2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#0f172a}
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(120px);padding:13px 24px;background:var(--s3);border:1px solid var(--line2);border-radius:14px;font-size:12px;transition:transform .35s var(--ease);z-index:100000;pointer-events:none}
+#toast.on{transform:translateX(-50%) translateY(0)}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:rgba(148,163,184,.2);border-radius:6px}
+</style>
+</head>
+<body>
+<div id="cloak"><div class="h">` to show again</div></div>
+<div id="boot">
+  <div class="logo"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/windowsterminal.svg" alt=""></div>
+  <div class="title">ALEKS</div>
+  <div class="sub">Scramjet engine</div>
+  <div class="bar"><i></i></div>
+</div>
+<div id="desktop">
+  <div id="icons"></div>
+  <div id="windows"></div>
+  <div id="startmenu">
+    <h4>Pinned</h4>
+    <div class="sm-grid" id="smGrid"></div>
+    <div class="sm-footer"><div class="avatar">A</div><div><b style="color:#e2e8f0">aleks</b><br>scramjet</div></div>
+  </div>
+  <div id="taskbar">
+    <button id="start" type="button"><img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/windows.svg" alt=""></button>
+    <div id="tasks"></div>
+    <button id="hideBtn" type="button" title="Hide (` )">Hide</button>
+    <div id="tray">
+      <img src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/wifi.svg" id="trayWifi" alt="">
+      <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/volume-up.svg" alt="">
+      <img src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/battery-full.svg" alt="">
+    </div>
+    <div id="clock"><div class="t">--:--</div><div class="d">--/--</div></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   EXACT SCRAMJET-APP PROXY ENGINE (not their UI)
+   Source: https://github.com/MercuryWorkshop/Scramjet-App
+           public/index.js + public/sw.js
+   ═══════════════════════════════════════════════════════════════ */
+
+document.title = "about:blank";
+setInterval(function () {
+  if (document.title !== "about:blank") document.title = "about:blank";
+}, 2000);
+
+var engineReady = false;
+var scramjet = null;
+var connection = null;
+
+/** Same as Scramjet-App register-sw pattern */
+async function registerSW() {
+  if (!("serviceWorker" in navigator)) throw new Error("No serviceWorker");
+  await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+  await navigator.serviceWorker.ready;
+}
+
+/**
+ * Exact engine init from Scramjet-App public/index.js:
+ *   const { ScramjetController } = $scramjetLoadController();
+ *   const scramjet = new ScramjetController({ files: { ... } });
+ *   scramjet.init();
+ *   const connection = new BareMux.BareMuxConnection("/baremux/worker.js");
+ */
+async function initEngine() {
+  try {
+    if (typeof $scramjetLoadController !== "function") {
+      console.warn("[ALEKS] /scram/scramjet.all.js not loaded — deploy on Scramjet-App");
+      return false;
+    }
+    if (typeof BareMux === "undefined") {
+      console.warn("[ALEKS] /baremux/index.js not loaded");
+      return false;
+    }
+
+    await registerSW();
+
+    var ScramjetController = $scramjetLoadController().ScramjetController;
+    scramjet = new ScramjetController({
+      files: {
+        wasm: "/scram/scramjet.wasm.wasm",
+        all: "/scram/scramjet.all.js",
+        sync: "/scram/scramjet.sync.js",
+      },
+    });
+    scramjet.init();
+
+    connection = new BareMux.BareMuxConnection("/baremux/worker.js");
+
+    engineReady = true;
+    console.log("[ALEKS] Scramjet engine ready (Scramjet-App code)");
+    return true;
+  } catch (err) {
+    console.warn("[ALEKS] engine init failed:", err);
+    return false;
+  }
+}
+
+/**
+ * Exact navigate path from Scramjet-App:
+ *   setTransport libcurl + wisp
+ *   createFrame()
+ *   frame.go(url)   ← REAL website URL, not their UI
+ */
+async function engineGo(iframe, realUrl) {
+  if (!realUrl) return false;
+  realUrl = String(realUrl).trim();
+  if (!/^https?:\/\//i.test(realUrl)) realUrl = "https://" + realUrl;
+
+  if (!engineReady || !scramjet || !connection) {
+    console.warn("[ALEKS] engine not ready");
+    return false;
+  }
+
+  try {
+    var wispUrl =
+      (location.protocol === "https:" ? "wss" : "ws") +
+      "://" +
+      location.host +
+      "/wisp/";
+
+    if ((await connection.getTransport()) !== "/libcurl/index.mjs") {
+      await connection.setTransport("/libcurl/index.mjs", [
+        { websocket: wispUrl },
+      ]);
+    }
+
+    // Use their createFrame with OUR iframe (ALEKS chrome only)
+    var frame = scramjet.createFrame(iframe);
+    frame.go(realUrl);
+    return true;
+  } catch (err) {
+    console.warn("[ALEKS] frame.go failed:", err);
+    return false;
+  }
+}
+
+/* ── ALEKS UI (yours) ── */
+var cloaked = false;
+function toggleCloak() {
+  cloaked = !cloaked;
+  document.getElementById("cloak").classList.toggle("on", cloaked);
+  document.title = "about:blank";
+}
+document.addEventListener("keydown", function (e) {
+  if (e.code === "Backquote" || e.key === "`") {
+    e.preventDefault();
+    toggleCloak();
+  }
+});
+
+var IMG = {
+  game: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/steam.svg",
+  web: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/googlechrome.svg",
+  roblox: "https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/roblox.svg",
+  note: "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/journal-text.svg",
+  calc: "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/calculator.svg",
+  gear: "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/gear.svg",
+  info: "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/icons/info-circle.svg",
+};
+function img(k) {
+  return '<img src="' + (IMG[k] || IMG.info) + '" alt="">';
+}
+
+var GAMES = {
+  Popular: [
+    { n: "2048", d: "Slide & merge", u: "https://play2048.co/" },
+    { n: "Tetris", d: "Stack blocks", u: "https://chvin.github.io/react-tetris/" },
+    { n: "Snake", d: "Eat & grow", u: "https://playsnake.org/" },
+    { n: "Chess", d: "vs computer", u: "https://www.chess.com/play/computer" },
+    { n: "Solitaire", d: "Cards", u: "https://solitaired.com/" },
+  ],
+  Action: [
+    { n: "Shell Shockers", d: "Egg FPS", u: "https://shellshock.io/" },
+    { n: "Krunker", d: "Fast FPS", u: "https://krunker.io/" },
+    { n: "1v1.LOL", d: "Build & fight", u: "https://1v1.lol/" },
+    { n: "Smash Karts", d: "Kart combat", u: "https://smashkarts.io/" },
+  ],
+  Racing: [
+    { n: "Moto X3M", d: "Bike trials", u: "https://motox3m.io/" },
+    { n: "Slope", d: "3D endless", u: "https://slopegame.io/" },
+  ],
+  IO: [
+    { n: "Agar.io", d: "Eat & grow", u: "https://agar.io/" },
+    { n: "Slither.io", d: "Snake MMO", u: "https://slither.io/" },
+    { n: "Diep.io", d: "Tank MMO", u: "https://diep.io/" },
+  ],
+  Casual: [
+    { n: "Cookie Clicker", d: "Idle", u: "https://orteil.dashnet.org/cookieclicker/" },
+    { n: "Geometry Dash", d: "Rhythm", u: "https://geometrydash.io/" },
+    { n: "Wordle", d: "Words", u: "https://www.nytimes.com/games/wordle/index.html" },
+  ],
+};
+
+var winZ = 100,
+  windows = {},
+  winLayer = document.getElementById("windows"),
+  tasksEl = document.getElementById("tasks"),
+  toastEl = document.getElementById("toast"),
+  toastTimer;
+function toast(m) {
+  toastEl.textContent = m;
+  toastEl.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function () {
+    toastEl.classList.remove("on");
+  }, 2600);
+}
+function tickClock() {
+  var d = new Date();
+  document.querySelector("#clock .t").textContent = d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  document.querySelector("#clock .d").textContent = d.toLocaleDateString([], {
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+tickClock();
+setInterval(tickClock, 10000);
+
+function openWindow(opts) {
+  var id = opts.id;
+  if (windows[id]) {
+    windows[id].el.classList.remove("minimized");
+    focusWindow(id);
+    return windows[id];
+  }
+  var win = document.createElement("div");
+  win.className = "win";
+  win.style.zIndex = ++winZ;
+  var n = Object.keys(windows).length;
+  win.style.top = 50 + n * 28 + "px";
+  win.style.left = 120 + n * 28 + "px";
+  win.style.width = (opts.w || 740) + "px";
+  win.style.height = (opts.h || 500) + "px";
+  win.innerHTML =
+    '<div class="win-title"><span class="w-ic">' +
+    img(opts.iconKey || "info") +
+    '</span><span class="w-name">' +
+    (opts.name || "Window") +
+    '</span><button class="win-btn min" type="button">—</button><button class="win-btn max" type="button">▢</button><button class="win-btn close" type="button">✕</button></div><div class="win-body"></div><div class="win-resize"></div>';
+  var body = win.querySelector(".win-body");
+  if (opts.build) opts.build(body);
+  winLayer.appendChild(win);
+  var title = win.querySelector(".win-title"),
+    dragX = 0,
+    dragY = 0,
+    dragging = false;
+  title.addEventListener("mousedown", function (e) {
+    if (e.target.closest(".win-btn") || win.classList.contains("maximized")) return;
+    dragging = true;
+    dragX = e.clientX - win.offsetLeft;
+    dragY = e.clientY - win.offsetTop;
+    focusWindow(id);
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (!dragging) return;
+    win.style.left = Math.max(0, Math.min(innerWidth - 80, e.clientX - dragX)) + "px";
+    win.style.top = Math.max(0, Math.min(innerHeight - 80, e.clientY - dragY)) + "px";
+  });
+  document.addEventListener("mouseup", function () {
+    dragging = false;
+  });
+  var rsz = win.querySelector(".win-resize"),
+    rsX,
+    rsY,
+    rsW,
+    rsH,
+    resizing = false;
+  rsz.addEventListener("mousedown", function (e) {
+    if (win.classList.contains("maximized")) return;
+    resizing = true;
+    rsX = e.clientX;
+    rsY = e.clientY;
+    rsW = win.offsetWidth;
+    rsH = win.offsetHeight;
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (!resizing) return;
+    win.style.width = Math.max(360, rsW + (e.clientX - rsX)) + "px";
+    win.style.height = Math.max(240, rsH + (e.clientY - rsY)) + "px";
+  });
+  document.addEventListener("mouseup", function () {
+    resizing = false;
+  });
+  win.querySelector(".close").onclick = function () {
+    closeWindow(id);
+  };
+  win.querySelector(".min").onclick = function () {
+    win.classList.add("minimized");
+    updateTaskbar();
+  };
+  win.querySelector(".max").onclick = function () {
+    win.classList.toggle("maximized");
+  };
+  win.addEventListener("mousedown", function () {
+    focusWindow(id);
+  });
+  windows[id] = { el: win, name: opts.name, iconKey: opts.iconKey || "info" };
+  focusWindow(id);
+  return windows[id];
+}
+function closeWindow(id) {
+  if (!windows[id]) return;
+  windows[id].el.remove();
+  delete windows[id];
+  updateTaskbar();
+}
+function focusWindow(id) {
+  if (!windows[id]) return;
+  windows[id].el.style.zIndex = ++winZ;
+  windows[id].el.classList.remove("minimized");
+  Object.keys(windows).forEach(function (k) {
+    windows[k].el.classList.remove("active");
+  });
+  windows[id].el.classList.add("active");
+  updateTaskbar(id);
+}
+function updateTaskbar(activeId) {
+  tasksEl.innerHTML = "";
+  Object.keys(windows).forEach(function (id) {
+    var w = windows[id],
+      t = document.createElement("button");
+    t.className = "task" + (id === activeId ? " active" : "");
+    t.type = "button";
+    t.innerHTML = img(w.iconKey) + "<span>" + w.name + "</span>";
+    t.onclick = function () {
+      if (w.el.classList.contains("minimized")) {
+        w.el.classList.remove("minimized");
+        focusWindow(id);
+      } else if (parseInt(w.el.style.zIndex) === winZ) {
+        w.el.classList.add("minimized");
+        updateTaskbar();
+      } else focusWindow(id);
+    };
+    tasksEl.appendChild(t);
+  });
+}
+function proxyBar() {
+  return (
+    '<div class="proxy-bar ' +
+    (engineReady ? "on" : "") +
+    '"><span class="dot"></span>' +
+    (engineReady
+      ? "Scramjet engine · frame.go(real URL)"
+      : "Engine offline · host with Scramjet-App") +
+    "</div>"
+  );
+}
+
+function openGames() {
+  openWindow({
+    id: "games",
+    name: "Games",
+    iconKey: "game",
+    w: 880,
+    h: 580,
+    build: function (body) {
+      var wrap = document.createElement("div");
+      wrap.style.cssText = "display:flex;flex-direction:column;height:100%;min-height:0";
+      wrap.innerHTML =
+        proxyBar() +
+        '<div class="hub"><input class="hub-search" placeholder="Search..."><div class="hub-content"></div></div>';
+      body.appendChild(wrap);
+      var search = wrap.querySelector(".hub-search"),
+        content = wrap.querySelector(".hub-content");
+      function build(f) {
+        content.innerHTML = "";
+        Object.keys(GAMES).forEach(function (cat) {
+          var list = GAMES[cat].filter(function (g) {
+            return !f || g.n.toLowerCase().indexOf(f) >= 0;
+          });
+          if (!list.length) return;
+          var sec = document.createElement("div");
+          sec.className = "cat";
+          var html = "<h3>" + cat + '</h3><div class="games">';
+          list.forEach(function (g) {
+            html +=
+              '<div class="game" data-u="' +
+              g.u +
+              '" data-n="' +
+              g.n +
+              '"><div class="thumb">' +
+              img("game") +
+              '</div><div class="info"><div class="name">' +
+              g.n +
+              '</div><div class="desc">' +
+              g.d +
+              "</div></div></div>";
+          });
+          html += "</div>";
+          sec.innerHTML = html;
+          content.appendChild(sec);
+        });
+        content.querySelectorAll(".game").forEach(function (el) {
+          el.onclick = function () {
+            openGame(el.getAttribute("data-u"), el.getAttribute("data-n"));
+          };
+        });
+      }
+      build("");
+      search.oninput = function () {
+        build(search.value.toLowerCase().trim());
+      };
+    },
+  });
+}
+
+function openGame(realUrl, name) {
+  openWindow({
+    id: "game:" + name,
+    name: name,
+    iconKey: "game",
+    w: 940,
+    h: 620,
+    build: function (body) {
+      body.innerHTML =
+        proxyBar() +
+        '<div class="frame-host"><div class="loading">Scramjet frame.go…</div><iframe allow="fullscreen;gamepad;autoplay"></iframe></div>';
+      var iframe = body.querySelector("iframe");
+      var loading = body.querySelector(".loading");
+      engineGo(iframe, realUrl).then(function (ok) {
+        loading.style.display = ok ? "none" : "flex";
+        if (!ok)
+          loading.textContent =
+            "Engine offline — deploy on Scramjet-App (see page source comment)";
+        toast(ok ? name + " · Scramjet" : "Engine not loaded");
+      });
+    },
+  });
+}
+
+function openBrowse() {
+  openWindow({
+    id: "browse",
+    name: "Navigator",
+    iconKey: "web",
+    w: 1000,
+    h: 680,
+    build: function (body) {
+      body.innerHTML =
+        proxyBar() +
+        '<div class="nav-shell"><div class="nav-chrome"><div class="nav-row">' +
+        '<div class="nav-url"><input class="burl" placeholder="URL — Scramjet frame.go"><button class="go" type="button">Go</button></div></div></div>' +
+        '<div class="frame-host"><div class="loading">Ready</div><iframe allow="fullscreen"></iframe></div></div>';
+      var iframe = body.querySelector("iframe"),
+        loading = body.querySelector(".loading"),
+        input = body.querySelector(".burl");
+      function go() {
+        var v = input.value.trim();
+        if (!v) return;
+        if (!/^https?:\/\//i.test(v) && v.indexOf(".") === -1)
+          v = "https://www.google.com/search?q=" + encodeURIComponent(v);
+        else if (!/^https?:\/\//i.test(v)) v = "https://" + v;
+        loading.style.display = "flex";
+        engineGo(iframe, v).then(function (ok) {
+          loading.style.display = ok ? "none" : "flex";
+          if (!ok) loading.textContent = "Engine offline";
+        });
+      }
+      body.querySelector(".go").onclick = go;
+      input.onkeydown = function (e) {
+        if (e.key === "Enter") go();
+      };
+    },
+  });
+}
+
+function openRoblox() {
+  openWindow({
+    id: "roblox",
+    name: "Roblox",
+    iconKey: "roblox",
+    w: 1020,
+    h: 700,
+    build: function (body) {
+      body.innerHTML =
+        proxyBar() +
+        '<div class="frame-host"><div class="loading">frame.go(roblox.com)…</div><iframe allow="fullscreen"></iframe></div>';
+      var iframe = body.querySelector("iframe"),
+        loading = body.querySelector(".loading");
+      engineGo(iframe, "https://www.roblox.com/login").then(function (ok) {
+        loading.style.display = ok ? "none" : "flex";
+        if (!ok) loading.textContent = "Engine offline";
+      });
+    },
+  });
+}
+
+function openNotepad() {
+  openWindow({
+    id: "notepad",
+    name: "Notepad",
+    iconKey: "note",
+    w: 660,
+    h: 480,
+    build: function (body) {
+      body.innerHTML =
+        '<div class="note"><textarea placeholder="Type…"></textarea><div class="note-bar"><span class="st">ready</span></div></div>';
+      var ta = body.querySelector("textarea"),
+        st = body.querySelector(".st");
+      try {
+        ta.value = localStorage.getItem("aleks_note") || "";
+      } catch (e) {}
+      ta.oninput = function () {
+        try {
+          localStorage.setItem("aleks_note", ta.value);
+        } catch (e) {}
+        st.textContent = ta.value.length + " chars";
+      };
+    },
+  });
+}
+function openCalc() {
+  openWindow({
+    id: "calc",
+    name: "Calculator",
+    iconKey: "calc",
+    w: 350,
+    h: 500,
+    build: function (body) {
+      body.innerHTML =
+        '<div class="calc"><div class="calc-display">0</div><div class="calc-grid"></div></div>';
+      var disp = body.querySelector(".calc-display"),
+        grid = body.querySelector(".calc-grid"),
+        expr = "";
+      [
+        ["C", "clr"],
+        ["(", "op"],
+        [")", "op"],
+        ["/", "op"],
+        ["7", ""],
+        ["8", ""],
+        ["9", ""],
+        ["*", "op"],
+        ["4", ""],
+        ["5", ""],
+        ["6", ""],
+        ["-", "op"],
+        ["1", ""],
+        ["2", ""],
+        ["3", ""],
+        ["+", "op"],
+        ["0", ""],
+        [".", ""],
+        ["⌫", "op"],
+        ["=", "eq"],
+      ].forEach(function (k) {
+        var b = document.createElement("button");
+        b.className = "calc-btn " + k[1];
+        b.type = "button";
+        b.textContent = k[0];
+        b.onclick = function () {
+          if (k[0] === "C") {
+            expr = "";
+            disp.textContent = "0";
+            return;
+          }
+          if (k[0] === "⌫") {
+            expr = expr.slice(0, -1);
+            disp.textContent = expr || "0";
+            return;
+          }
+          if (k[0] === "=") {
+            try {
+              expr = String(Function('"use strict";return (' + expr + ")")());
+              disp.textContent = expr;
+            } catch (e) {
+              disp.textContent = "error";
+              expr = "";
+            }
+            return;
+          }
+          expr += k[0];
+          disp.textContent = expr;
+        };
+        grid.appendChild(b);
+      });
+    },
+  });
+}
+function openSettings() {
+  openWindow({
+    id: "settings",
+    name: "Settings",
+    iconKey: "gear",
+    w: 560,
+    h: 420,
+    build: function (body) {
+      body.innerHTML =
+        '<div class="panel"><h2 style="margin-bottom:14px">Settings</h2>' +
+        '<div class="card"><b>Scramjet engine</b><span>' +
+        (engineReady ? "Loaded — createFrame().go(url)" : "Not loaded") +
+        "</span></div>" +
+        '<div class="card"><b>Deploy</b><span>Clone Scramjet-App · replace public/index.html with this page · keep /scram /baremux /sw.js /wisp · pnpm start</span></div>' +
+        '<div class="card"><b>Hide</b><span>Press ` for blank screen. Tab title = about:blank</span></div></div>';
+    },
+  });
+}
+function openAbout() {
+  openWindow({
+    id: "about",
+    name: "About",
+    iconKey: "info",
+    w: 420,
+    h: 280,
+    build: function (body) {
+      body.innerHTML =
+        '<div class="panel" style="text-align:center;padding-top:40px"><h2>ALEKS</h2><p style="color:var(--muted);margin-top:8px">UI ours · proxy = Scramjet-App engine</p></div>';
+    },
+  });
+}
+
+var APP_OPENERS = {
+  games: openGames,
+  browse: openBrowse,
+  roblox: openRoblox,
+  notepad: openNotepad,
+  calc: openCalc,
+  settings: openSettings,
+  about: openAbout,
+};
+var DESKTOP_APPS = [
+  { id: "games", label: "Games", k: "game" },
+  { id: "browse", label: "Web", k: "web" },
+  { id: "roblox", label: "Roblox", k: "roblox" },
+  { id: "notepad", label: "Notepad", k: "note" },
+  { id: "calc", label: "Calculator", k: "calc" },
+  { id: "settings", label: "Settings", k: "gear" },
+];
+
+function buildDesktop() {
+  var root = document.getElementById("icons");
+  root.innerHTML = "";
+  DESKTOP_APPS.forEach(function (a) {
+    var el = document.createElement("div");
+    el.className = "icon";
+    el.setAttribute("data-open", a.id);
+    el.innerHTML =
+      '<span class="ic">' + img(a.k) + '</span><span class="label">' + a.label + "</span>";
+    root.appendChild(el);
+  });
+  var sm = document.getElementById("smGrid");
+  sm.innerHTML = "";
+  DESKTOP_APPS.concat([{ id: "about", label: "About", k: "info" }]).forEach(function (a) {
+    var el = document.createElement("div");
+    el.className = "sm-item";
+    el.setAttribute("data-open", a.id);
+    el.innerHTML = '<span class="ic">' + img(a.k) + "</span>" + a.label;
+    sm.appendChild(el);
+  });
+  document.querySelectorAll("[data-open]").forEach(function (el) {
+    el.addEventListener("click", function () {
+      var app = el.getAttribute("data-open");
+      if (APP_OPENERS[app]) APP_OPENERS[app]();
+      document.getElementById("startmenu").classList.remove("on");
+    });
+  });
+}
+buildDesktop();
+
+var startmenu = document.getElementById("startmenu");
+document.getElementById("start").onclick = function (e) {
+  e.stopPropagation();
+  startmenu.classList.toggle("on");
+};
+document.getElementById("hideBtn").onclick = function (e) {
+  e.stopPropagation();
+  toggleCloak();
+};
+document.addEventListener("click", function (e) {
+  if (
+    !startmenu.contains(e.target) &&
+    e.target.id !== "start" &&
+    !e.target.closest("#start")
+  )
+    startmenu.classList.remove("on");
+});
+
+(async function () {
+  await initEngine();
+  setTimeout(function () {
+    document.getElementById("boot").classList.add("gone");
+    setTimeout(function () {
+      openGames();
+    }, 300);
+  }, 1500);
+})();
+</script>
+</body>
 </html>
